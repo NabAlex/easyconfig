@@ -132,7 +132,7 @@ func UseOnlyDefault(flag bool) {
 	useDefault = flag
 }
 
-func GetInt(pathToValue string, defaultValue int64) int64 {
+func GetInt64(pathToValue string, defaultValue int64) int64 {
 	el, ok := getVar(pathToValue)
 	if !ok {
 		return defaultValue
@@ -144,6 +144,10 @@ func GetInt(pathToValue string, defaultValue int64) int64 {
 	}
 
 	return result
+}
+
+func GetInt(pathToValue string, defaultValue int) int {
+	return int(GetInt64(pathToValue, int64(defaultValue)))
 }
 
 func GetString(pathToValue string, defaultValue string) string {
