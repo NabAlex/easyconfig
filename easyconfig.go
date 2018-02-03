@@ -114,11 +114,7 @@ func getVar(pathToValue string) (interface{}, bool) {
 
 	tmp := yamlObj
 	paths := strings.Split(pathToValue, ".")
-	for i, path := range paths {
-		if i == len(paths) {
-			break
-		}
-
+	for _, path := range paths {
 		newMap, err := toMap(tmp)
 		if err != nil {
 			log.Println(err)
