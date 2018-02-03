@@ -8,21 +8,18 @@ import (
 	"log"
 	"os"
 	"strings"
+	"runtime"
 )
 
 const module = "easyconfig"
 
 var (
-	assertIfUse = false
-	useDefault  = false
-	configname  = ""
+	checkInit  = true
+	useDefault = false
+	configname = ""
 )
 
 var yamlObj interface{} = nil
-
-func init() {
-	assertIfUse = true
-}
 
 func parseFile(r io.Reader) interface{} {
 	_yaml, err := goyaml2.Read(r)
@@ -34,8 +31,8 @@ func parseFile(r io.Reader) interface{} {
 }
 
 func initYaml() (interface{}, bool) {
+	filename := flag.String("c", "", "use [-c filename]")
 	flag.Parse()
-	filename := flag.String("conf", "", "use -conf=[filename]")
 	if *filename == "" {
 		log.Printf(module + ": use default values (no flag \"conf\")")
 		return nil, false
@@ -81,8 +78,24 @@ func toList(obj interface{}) ([]interface{}, error) {
 	return l, nil
 }
 
+func _getCallerIsFromInit() bool {
+	fpcs := make([]uintptr, 1)
+	n := runtime.Callers(4, fpcs)
+	if n == 0 {
+		return false
+	}
+
+	fun := runtime.FuncForPC(fpcs[0] - 1)
+	if fun == nil {
+		return false
+	}
+
+	modulePath := strings.Split(fun.Name(), ".")
+	return modulePath[len(modulePath) - 1] == "init"
+}
+
 func getVar(pathToValue string) (interface{}, bool) {
-	if assertIfUse {
+	if checkInit && !_getCallerIsFromInit() {
 		log.Panicf(module + ": call function after init, use EnableWorkWithConfig()")
 	}
 
@@ -124,7 +137,7 @@ func getVar(pathToValue string) (interface{}, bool) {
 
 /* debug */
 func EnableWorkAfterInit() {
-	assertIfUse = false
+	checkInit = true
 }
 
 /* debug */
@@ -147,7 +160,17 @@ func GetInt64(pathToValue string, defaultValue int64) int64 {
 }
 
 func GetInt(pathToValue string, defaultValue int) int {
-	return int(GetInt64(pathToValue, int64(defaultValue)))
+	el, ok := getVar(pathToValue)
+	if !ok {
+		return defaultValue
+	}
+
+	result, ok := el.(int64)
+	if !ok {
+		log.Panicf(module + ": value is not \"int64\" path: [%s] file: [%s]", pathToValue, configname)
+	}
+
+	return int(result)
 }
 
 func GetString(pathToValue string, defaultValue string) string {
